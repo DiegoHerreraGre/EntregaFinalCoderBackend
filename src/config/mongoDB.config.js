@@ -7,4 +7,3 @@ export const connectMongoDB = async () => {
   } catch (error) {
     console.log(`Error: ${error}`);
   }
-}
