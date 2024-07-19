@@ -3,8 +3,11 @@ import local from 'passport-local';
 import userDao from '../dao/mongoDB/user.dao.js';
 import { hashPassword } from '../utils/hashPassword.js';
 import bcrypt from 'bcrypt';
+import envs from './envs.config.js';
+import googlePassport from 'passport-google-oauth20';
 
 const localStrategy = local.Strategy;
+const googleStrategy = googlePassport.Strategy;
 
 export const initializePassport = () => {
 	passport.use(
@@ -57,6 +60,42 @@ passport.use(
 			} catch (err) {
 				console.error(err);
 				done(err);
+			}
+		}
+	)
+);
+
+passport.use(
+	'google',
+	new googleStrategy(
+		{
+			clientID: envs.GOOGLE_CLIENT_ID,
+			clientSecret: envs.GOOGLE_CLIENT_SECRET,
+			callbackURL:
+				'http://localhost:8080/api/session/google' /*  '/auth/google/callback' */,
+		},
+		async (accessToken, refreshToken, profile, cb) => {
+			// cb es callback y funciona igual que done para este caso
+			try {
+				var { id, name, emails } = profile;
+				var user = await userDao.getByEmail(emails[0].value);
+				if (user) {
+					return (cb, user)
+				} else {
+					var newUser = {
+						first_name: name.givenName,
+						last_name: name.familyName,
+						password: null,
+						email: emails[0].value,
+						age: null,
+					}
+
+					var userCreate = await userDao.create(newUser);
+					return (cb, userCreate);
+				}
+			} catch (err) {
+				console.error(err);
+				cb(err);
 			}
 		}
 	)
