@@ -49,7 +49,7 @@ router.post('/auth', async (req, res) => {
 		res.status(500).json({ status: 'error', msg: 'Internal server error' });
 	}
 });
-
+	
 router.get('/google', (req, res, next) => {
 	passport.authenticate(
 		'google',
