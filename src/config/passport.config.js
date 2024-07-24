@@ -5,9 +5,13 @@ import { hashPassword } from '../utils/hashPassword.js';
 import bcrypt from 'bcrypt';
 import envs from './envs.config.js';
 import googlePassport from 'passport-google-oauth20';
+import jwt from 'passport-jwt';
+import { cookieExtractor } from '../utils/cookieExtractor.js';
 
 const localStrategy = local.Strategy;
 const googleStrategy = googlePassport.Strategy;
+const jwtStrategy = jwt.Strategy;
+const extractJwt = jwt.ExtractJwt;
 
 export const initializePassport = () => {
 	passport.use(
@@ -66,6 +70,7 @@ passport.use(
 );
 
 passport.use(
+	/* con esta estrategia el usuario se verifica con su cuenta de Google, para esto hay que hacer una configuración extra en la Google Cloud Console */
 	'google',
 	new googleStrategy(
 		{
@@ -80,7 +85,7 @@ passport.use(
 				var { id, name, emails } = profile;
 				var user = await userDao.getByEmail(emails[0].value);
 				if (user) {
-					return (cb, user)
+					return cb, user;
 				} else {
 					var newUser = {
 						first_name: name.givenName,
@@ -88,14 +93,35 @@ passport.use(
 						password: null,
 						email: emails[0].value,
 						age: null,
-					}
+					};
 
 					var userCreate = await userDao.create(newUser);
-					return (cb, userCreate);
+					return cb, userCreate;
 				}
 			} catch (err) {
 				console.error(err);
 				cb(err);
+			}
+		}
+	)
+);
+
+// Estrategia de JWT
+
+passport.use(
+	'jwt',
+	new jwtStrategy(
+		{
+			jwtFromRequest: extractJwt.fromExtractors([cookieExtractor]),
+			secretOrKey: envs.JWT_SECRET_CODE,
+		},
+		async (jwt_payload, done) => {
+			try {
+				console.log(jwt_payload);
+				return done(null, jwt_payload.id);
+			} catch (err) {
+				console.error(err);
+				return done(err);
 			}
 		}
 	)

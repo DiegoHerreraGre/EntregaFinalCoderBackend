@@ -9,6 +9,7 @@ import envs from './config/envs.config.js';
 import passport from 'passport';
 import { initializePassport } from './config/passport.config.js';
 import session from 'express-session';
+import cookieParser from 'cookie-parser';
 
 const app = express();
 
@@ -20,6 +21,7 @@ app.engine('handlebars', handlebars.engine()); // Inicia el motor del la plantil
 app.set('views', __dirname + '/views'); // Indicamos que ruta se encuentras las vistas
 app.set('view engine', 'handlebars'); // Indicamos con que motor vamos a utilizar las vistas
 app.use(express.static('public'));
+app.use(cookieParser());
 
 app.use(
 	session({
