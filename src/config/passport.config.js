@@ -1,142 +1,151 @@
 import passport from 'passport';
-import local from 'passport-local';
-import userDao from '../dao/mongoDB/user.dao.js';
-import { hashPassword } from '../utils/hashPassword.js';
-import bcrypt from 'bcrypt';
-import envs from './envs.config.js';
-import googlePassport from 'passport-google-oauth20';
+import google from 'passport-google-oauth20';
 import jwt from 'passport-jwt';
+import local from 'passport-local';
+import passportCustom from 'passport-custom';
+import cartDao from '../dao/mongoDB/cart.dao.js';
+import userDao from '../dao/mongoDB/user.dao.js';
 import { cookieExtractor } from '../utils/cookieExtractor.js';
+import { createHash, isValidPassword } from '../utils/hashPassword.js';
+import envs from './envs.config.js';
+import { verifyToken } from '../utils/jswt.js';
 
-const localStrategy = local.Strategy;
-const googleStrategy = googlePassport.Strategy;
-const jwtStrategy = jwt.Strategy;
-const extractJwt = jwt.ExtractJwt;
+const LocalStrategy = local.Strategy;
+const GoogleStrategy = google.Strategy;
+const JWTStrategy = jwt.Strategy;
+const ExtractJWT = jwt.ExtractJwt;
+
+const CustomStrategy = passportCustom.Strategy;
 
 export const initializePassport = () => {
 	passport.use(
-		'register', // nombre de la estrategia
-		new localStrategy(
+		'register', // Nombre de la estrategia
+		new LocalStrategy(
 			{ passReqToCallback: true, usernameField: 'email' },
 			async (req, username, password, done) => {
 				try {
-					const { first_name, last_name, email: username, age } = req.query;
+					const { first_name, last_name, age, role } = req.query;
 					const user = await userDao.getByEmail(username);
-
 					if (user)
 						return done(null, false, { message: 'User already exists' });
 
-					const hashedPassword = await hashPassword(password); // Espera a que la contraseña se hashee
-
+					const cart = await cartDao.create();
 					const newUser = {
-						first_name: first_name,
-						last_name: last_name,
-						password: hashedPassword, // Usa la contraseña hasheada
+						first_name,
+						last_name,
+						password: createHash(password),
 						email: username,
-						age: age,
+						age,
+						role,
+						cart: cart._id,
 					};
 
 					const userCreate = await userDao.create(newUser);
+
 					return done(null, userCreate);
-				} catch (err) {
-					console.error(err);
-					done(err);
+				} catch (error) {
+					return done(error);
 				}
 			}
 		)
 	);
-};
 
-passport.use(
-	'login',
-	new localStrategy(
-		{ usernameField: 'email' },
-		async (username, password, done) => {
-			try {
-				const user = await userDao.getByEmail(username);
-				if (!user) return done(null, false, { message: 'User not found' });
+	passport.use(
+		'login',
+		new LocalStrategy(
+			{ usernameField: 'email' },
+			async (username, password, done) => {
+				try {
+					const user = await userDao.getByEmail(username);
 
-				const isPasswordValid = await bcrypt.compare(password, user.password);
-				if (!isPasswordValid)
-					return done(null, false, { message: 'email or password incorrect' });
+					if (!user || !isValidPassword(user.password, password))
+						return done(null, false, { message: 'User or email invalid' });
 
-				return done(null, user);
-			} catch (err) {
-				console.error(err);
-				done(err);
-			}
-		}
-	)
-);
-
-passport.use(
-	/* con esta estrategia el usuario se verifica con su cuenta de Google, para esto hay que hacer una configuración extra en la Google Cloud Console */
-	'google',
-	new googleStrategy(
-		{
-			clientID: envs.GOOGLE_CLIENT_ID,
-			clientSecret: envs.GOOGLE_CLIENT_SECRET,
-			callbackURL:
-				'http://localhost:8080/api/session/google' /*  '/auth/google/callback' */,
-		},
-		async (accessToken, refreshToken, profile, cb) => {
-			// cb es callback y funciona igual que done para este caso
-			try {
-				var { id, name, emails } = profile;
-				var user = await userDao.getByEmail(emails[0].value);
-				if (user) {
-					return cb, user;
-				} else {
-					var newUser = {
-						first_name: name.givenName,
-						last_name: name.familyName,
-						password: null,
-						email: emails[0].value,
-						age: null,
-					};
-
-					var userCreate = await userDao.create(newUser);
-					return cb, userCreate;
+					return done(null, user);
+				} catch (error) {
+					done(error);
 				}
-			} catch (err) {
-				console.error(err);
-				cb(err);
 			}
-		}
-	)
-);
+		)
+	);
 
-// Estrategia de JWT
+	// Estrategia de Google
+	passport.use(
+		'google',
+		new GoogleStrategy(
+			{
+				clientID: envs.GOOGLE_CLIENT_ID,
+				clientSecret: envs.GOOGLE_CLIENT_SECRET,
+				callbackURL: 'http://localhost:8080/api/session/google',
+			},
+			async (accessToken, refreshToken, profile, cb) => {
+				try {
+					const { name, emails } = profile;
+					const user = await userDao.getByEmail(emails[0].value);
 
-passport.use(
-	'jwt',
-	new jwtStrategy(
-		{
-			jwtFromRequest: extractJwt.fromExtractors([cookieExtractor]),
-			secretOrKey: envs.JWT_SECRET_CODE,
-		},
-		async (jwt_payload, done) => {
+					if (user) {
+						return cb(null, user);
+					} else {
+						const newUser = {
+							first_name: name.givenName,
+							last_name: name.familyName,
+							email: emails[0].value,
+						};
+
+						const userCreate = await userDao.create(newUser);
+						return cb(null, userCreate);
+					}
+				} catch (error) {
+					return cb(error);
+				}
+			}
+		)
+	);
+
+	// Estrategia de JWT
+	passport.use(
+		'jwt',
+		new JWTStrategy(
+			{
+				jwtFromRequest: ExtractJWT.fromExtractors([cookieExtractor]),
+				secretOrKey: envs.JWT_SECRET_CODE,
+			},
+			async (jwt_payload, done) => {
+				try {
+					return done(null, jwt_payload);
+				} catch (error) {
+					return done(error);
+				}
+			}
+		)
+	);
+
+	passport.use(
+		'current',
+		new CustomStrategy(async (req, done) => {
 			try {
-				console.log(jwt_payload);
-				return done(null, jwt_payload.id);
-			} catch (err) {
-				console.error(err);
-				return done(err);
+				const token = cookieExtractor(req);
+				if (!token) return done(null, false);
+				const tokenVerify = verifyToken(token);
+				if (!tokenVerify) return done(null, false);
+				const user = await userDao.getByEmail(tokenVerify.email);
+				done(null, user);
+			} catch (error) {
+				done(error);
 			}
+		})
+	);
+
+	passport.serializeUser((user, done) => {
+		done(null, user._id);
+	});
+
+	passport.deserializeUser(async (id, done) => {
+		try {
+			const user = await userDao.getById(id);
+			done(null, user);
+		} catch (error) {
+			done(error);
 		}
-	)
-);
-
-passport.serializeUser((user, done) => {
-	done(null, user._id);
-});
-
-passport.deserializeUser(async (id, done) => {
-	try {
-		const user = await userDao.getById(id);
-		done(null, user);
-	} catch (err) {
-		console.error(err);
-		done(err);
-	}
-});
+	});
+};

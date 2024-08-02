@@ -12,7 +12,7 @@ router.get(
 	async (req, res) => {
 		// Aquí lo que hay que hacer es que el usuario tenga que estar logueado para poder acceder a esta ruta --> por lo tanto hay que hacer POST en POSTMAN siempre en la ruta /auth/login definidas antes de acceder a los productos.
 		try {
-			const { limit, page, sort, category, status } = req.query; // Con nodemon se reiniciaría el token de las cookies, pero si no se loggea de nuevo, nunca podré ver el token real con el mío.
+			const { limit, page, sort, category, status } = req.body; // Con nodemon se reiniciaría el token de las cookies, pero si no se loggea de nuevo, nunca podré ver el token real con el mío.
 
 			const options = {
 				limit: limit || 10,

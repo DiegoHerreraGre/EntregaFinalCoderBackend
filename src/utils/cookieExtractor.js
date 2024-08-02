@@ -1,9 +1,8 @@
-import { request } from "express";
+export const cookieExtractor = (req) => {
+  let token = null;
+  if (req && req.cookies) {
+    token = req.cookies.token;
+  }
 
-export const cookieExtractor = (req = request) => {
-	let token = null;
-	if (req && req.cookies) {
-		token = req.cookies['jwt'];
-	}
-	return token;
+  return token;
 };
