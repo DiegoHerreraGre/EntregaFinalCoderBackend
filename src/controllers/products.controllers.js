@@ -1,7 +1,7 @@
 import { request, response } from "express";
 import productServices from "../services/product.services.js";
 
-const getAllProducts = async (req = request, res = response) => {
+const getAllProducts = async (req = request, res = response, next) => {
     try {
         const { limit, page, sort, category, status } = req.query;
 
@@ -14,7 +14,6 @@ const getAllProducts = async (req = request, res = response) => {
             learn: true,
         };
 
-        // Si nos solicitan por categoría
         if (category) {
             const products = await productServices.getAllProducts({ category }, options);
             return res.status(200).json({ status: "success", products });
@@ -29,11 +28,11 @@ const getAllProducts = async (req = request, res = response) => {
         res.status(200).json({ status: "success", products });
     } catch (error) {
         console.log(error);
-        res.status(500).json({ status: "Erro", msg: "Error interno del servidor" });
+        next(error); // Pasar el error al siguiente middleware de manejo de errores
     }
 };
 
-const getProductById = async (req = request, res = response) => {
+const getProductById = async (req = request, res = response, next) => {
     try {
         const { pid } = req.params;
         const product = await productServices.getProductById(pid);
@@ -42,11 +41,11 @@ const getProductById = async (req = request, res = response) => {
         res.status(200).json({ status: "success", product });
     } catch (error) {
         console.log(error);
-        res.status(500).json({ status: "Erro", msg: "Error interno del servidor" });
+        next(error);
     }
 };
 
-const updateProduct = async (req = request, res = response) => {
+const updateProduct = async (req = request, res = response, next) => {
     try {
         const { pid } = req.params;
         const productData = req.body;
@@ -56,11 +55,11 @@ const updateProduct = async (req = request, res = response) => {
         res.status(200).json({ status: "success", product });
     } catch (error) {
         console.log(error);
-        res.status(500).json({ status: "Erro", msg: "Error interno del servidor" });
+        next(error);
     }
 };
 
-const createProduct = async (req = request, res = response) => {
+const createProduct = async (req = request, res = response, next) => {
     try {
         const productData = req.body;
         const product = await productServices.createProduct(productData);
@@ -68,11 +67,11 @@ const createProduct = async (req = request, res = response) => {
         res.status(201).json({ status: "success", product });
     } catch (error) {
         console.log(error);
-        res.status(500).json({ status: "Erro", msg: "Error interno del servidor" });
+        next(error);
     }
 };
 
-const deleteProduct = async (req, res) => {
+const deleteProduct = async (req, res, next) => {
     try {
         const { pid } = req.params;
         const product = await productServices.deleteProduct(pid);
@@ -81,7 +80,7 @@ const deleteProduct = async (req, res) => {
         res.status(200).json({ status: "success", msg: `El producto con el id ${pid} fue eliminado` });
     } catch (error) {
         console.log(error);
-        res.status(500).json({ status: "Erro", msg: "Error interno del servidor" });
+        next(error);
     }
 };
 

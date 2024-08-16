@@ -1,5 +1,5 @@
 import { respProductDto } from "../dto/product.dto.js";
-import productRepository from "../dao/mongoDB/product.repository.js";
+import productRepository from "../persistence/mongoDB/product.repository.js";
 
 const getAllProducts = async (query, options) => {
     return await productRepository.getAll(query, options);
