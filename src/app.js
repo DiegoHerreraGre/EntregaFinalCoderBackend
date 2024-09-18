@@ -13,7 +13,7 @@ import cookieParser from 'cookie-parser';
 
 const app = express();
 
-connectMongoDB();
+connectMongoDB().then(() => console.log('MongoDB connected'));
 
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
@@ -24,11 +24,11 @@ app.use(express.static('public'));
 app.use(cookieParser());
 
 app.use(
-	session({
-		secret: envs.SECRET_CODE || '', // palabra secreta with default value
-		resave: true, // Mantiene la session activa, si esta en false la session se cierra en un cierto tiempo
-		saveUninitialized: true, // Guarda la session
-	})
+    session({
+        secret: envs.SECRET_CODE || '', // palabra secreta with default value
+        resave: true, // Mantiene la session activa, si esta en false la session se cierra en un cierto tiempo
+        saveUninitialized: true, // Guarda la session
+    })
 );
 
 initializePassport();
@@ -41,14 +41,12 @@ app.use('/api', routes);
 // Ruta de las vistas
 app.use('/', viewsRoutes);
 
-
 const httpServer = app.listen(8080, () => {
-	console.log('Servidor escuchando en el puerto 8080');
+    console.log('Servidor escuchando en el puerto 8080');
 });
 
 // Configuramos socket
-export const io = new Server( httpServer );
-
+export const io = new Server(httpServer);
 io.on('connection', () => {
-	console.log('Nuevo usuario Conectado');
+    console.log('Nuevo usuario Conectado');
 });
