@@ -6,7 +6,7 @@
     "type": "module",
     "scripts": {
         "dev": "nodemon ./src/app.js",
-        "git": "git add . && read -p 'Enter commit message: ' msg && git commit -m \"$msg\" --allow-empty && git push -u origin master"
+        "git": "git add . && read -p 'Enter commit message: ' msg && git commit -m \"$msg\" --allow-empty && git push -u origin main"
     },
     "keywords": [],
     "author": "Diego Herrera Gre",
