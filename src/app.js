@@ -25,7 +25,7 @@ app.use(cookieParser());
 
 app.use(
 	session({
-		secret: envs.SECRET_CODE, // palabra secreta
+		secret: envs.SECRET_CODE || '', // palabra secreta with default value
 		resave: true, // Mantiene la session activa, si esta en false la session se cierra en un cierto tiempo
 		saveUninitialized: true, // Guarda la session
 	})
@@ -49,6 +49,6 @@ const httpServer = app.listen(8080, () => {
 // Configuramos socket
 export const io = new Server( httpServer );
 
-io.on('connection', (socket) => {
+io.on('connection', () => {
 	console.log('Nuevo usuario Conectado');
 });
